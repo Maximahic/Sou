@@ -1,13 +1,376 @@
+<?php
+// ============================================
+// Subtle Currents — Музыкальная дистрибуция
+// Версия: 1.0
+// ============================================
+
+// Заголовки безопасности
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('X-XSS-Protection: 1; mode=block');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+
+// Отключаем кэширование для динамического контента
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
+// Константы приложения
+define('APP_NAME', 'Subtle Currents');
+define('APP_VERSION', '1.0.0');
+define('STORAGE_PREFIX', 'sc_');
+
+// Секретный ключ для шифрования (в реальном проекте должен быть в .env файле)
+define('SECRET_KEY', 'subtle-currents-secret-key-2024');
+
+// Функция для безопасного вывода
+function e($string) {
+    return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+}
+
+// Функция для генерации CSRF токена (если потребуется)
+function generateCsrfToken() {
+    if (!isset($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+?>
 <!DOCTYPE html>
 <html lang="ru" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Subtle Currents — Музыкальная дистрибуция</title>
+    <title><?php echo APP_NAME; ?> — Музыкальная дистрибуция</title>
     
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Подключение шрифтов -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Мета-теги -->
+    <meta name="description" content="Профессиональная платформа для дистрибуции музыки">
+    <meta name="theme-color" content="#0a0a0f">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>">
+
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a24;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --accent: #8b5cf6;
+            --accent-hover: #7c3aed;
+            --border-color: #27272a;
+            --gradient-1: #8b5cf6;
+            --gradient-2: #6366f1;
+            --gradient-3: #3b82f6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2), var(--gradient-3));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 800;
+        }
+
+        .glass-nav {
+            background: rgba(18, 18, 26, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(139, 92, 246, 0.3);
+            box-shadow: 0 8px 32px rgba(139, 92, 246, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2));
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+        }
+
+        .btn-primary:active { transform: translateY(0); }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.75rem;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-danger-lg {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+        }
+
+        .btn-danger-lg:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-warning-lg {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+        }
+
+        .btn-warning-lg:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+        }
+
+        .input-dark {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .input-dark:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+
+        .input-dark::placeholder { color: #71717a; }
+
+        .file-dropzone {
+            border: 2px dashed var(--border-color);
+            background: rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-dropzone:hover, .file-dropzone.active {
+            border-color: var(--accent);
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .custom-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px; height: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .custom-checkbox:checked {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .custom-checkbox:checked::after {
+            content: '\f00c';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            color: white;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in { animation: fadeInUp 0.6s ease-out; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .pulse-glow {
+            animation: pulse 2s ease-in-out infinite;
+            filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.5));
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .slide-in { animation: slideInRight 0.3s ease-out; }
+
+        @keyframes slideDown {
+            from { opacity: 0; max-height: 0; transform: translateY(-10px); }
+            to { opacity: 1; max-height: 500px; transform: translateY(0); }
+        }
+
+        .slide-down { animation: slideDown 0.3s ease-out; }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+
+        .platform-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .platform-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .platform-item:hover {
+            background: rgba(139, 92, 246, 0.05);
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+
+        .platform-item.selected {
+            background: rgba(139, 92, 246, 0.1);
+            border-color: var(--accent);
+        }
+
+        .modal-backdrop {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+        }
+
+        .nav-btn { position: relative; }
+
+        .nav-btn::after {
+            content: '';
+            position: absolute;
+            bottom: -2px; left: 50%;
+            transform: translateX(-50%);
+            width: 0; height: 2px;
+            background: var(--accent);
+            transition: width 0.3s ease;
+        }
+
+        .nav-btn:hover::after, .nav-btn.bg-white\/10::after { width: 80%; }
+
+        .glow-circle {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .glow-circle-1 { width: 400px; height: 400px; background: var(--gradient-1); top: -100px; right: -100px; }
+        .glow-circle-2 { width: 300px; height: 300px; background: var(--gradient-3); bottom: -50px; left: -50px; }
+
+        .danger-zone {
+            border: 2px solid rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.03);
+            border-radius: 1rem;
+            padding: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .grid-cols-2 { grid-template-columns: 1fr; }
+            .nav-btn { font-size: 0.75rem; padding: 0.5rem 0.75rem; }
+            .platform-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+            .nav-label { display: none; }
+        }
+
+        @media (min-width: 640px) {
+            .nav-label { display: inline; }
+        }
+    </style>
 
     <script>
         tailwind.config = {
@@ -45,7 +408,7 @@
                     <i class="fas fa-water text-7xl pulse-glow" style="color: var(--accent);"></i>
                     <div class="absolute inset-0 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full filter blur-xl opacity-20 animate-pulse"></div>
                 </div>
-                <h1 class="text-4xl font-black gradient-text mb-3">Subtle Currents</h1>
+                <h1 class="text-4xl font-black gradient-text mb-3"><?php echo APP_NAME; ?></h1>
                 <p class="text-gray-400 text-lg">Загрузка платформы...</p>
                 <div class="mt-6 flex justify-center">
                     <div class="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
@@ -59,7 +422,6 @@
         // КОНФИДЕНЦИАЛЬНЫЕ ДАННЫЕ (ЗАШИФРОВАНЫ)
         // ============================================
         const _cfg = (() => {
-            const _k = 'c3VidGxlLWN1cnJlbnRzLXNlY3JldA==';
             const _d = {
                 e: 'YUdGdVpHbHVYM05wWjI1a2IzSnBkR2RsY25RdVkyOXQ=',
                 p: 'WVdScGJXNDRNVEl6',
@@ -77,7 +439,8 @@
             };
         })();
 
-        const STORAGE_PREFIX = 'sc_';
+        const STORAGE_PREFIX = '<?php echo STORAGE_PREFIX; ?>';
+        const APP_VERSION = '<?php echo APP_VERSION; ?>';
 
         // ============================================
         // СЕРВИС ОЧИСТКИ КЭША
@@ -973,7 +1336,6 @@
                     if (deleteUserBtn) { const userId = deleteUserBtn.dataset.userId, confirmed = await Utils.confirmDialog('Вы уверены, что хотите удалить этого пользователя?'); if (confirmed) { try { await authService.deleteUser(userId); Utils.showNotification('Пользователь удален! 🗑️'); this.loadAdminUsers(); } catch (error) { Utils.showNotification('Ошибка: ' + error.message, 'error'); } } }
                 });
 
-                // Кнопки очистки кэша
                 document.getElementById('clear-content-btn')?.addEventListener('click', async () => {
                     if (await Utils.confirmDialog('Вы уверены, что хотите удалить ВСЕ релизы и тикеты? Пользователи останутся.', true)) {
                         const count = db.clearContentData();
